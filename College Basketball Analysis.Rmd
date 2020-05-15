@@ -11,6 +11,11 @@ T
 ```{r setup, include=FALSE}
 library(tidyverse)
 library(stringr)
+library(ggplot2)
+library(dplyr)
+library(readr)
+library(tidyr)
+library(magrittr)
 ```
 This code below loads the untouched dataframe then creates a new dataframe used to clean up the data. For the 
 most part, the data is already tidy, with a team's performance in one season being an entity. Here, we add a column
@@ -21,6 +26,7 @@ bball_tab <- read_csv("~/CMSC320-Final-Project/cbb.csv", col_types = cols())
 clean_bball <- bball_tab %>% 
   filter(!is.na(`POSTSEASON`)) %>%
   mutate(pstsn_rank=0) %>%
+  mutate(entityid=row_number()) %>%
   mutate(win_ratio=W/G)
 ```
 
@@ -46,7 +52,6 @@ for (i in 1:340) {
     clean_bball[i,"pstsn_rank"]<-0
   }
 }
-
 ```
 
 
