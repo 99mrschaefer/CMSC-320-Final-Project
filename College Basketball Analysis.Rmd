@@ -9,7 +9,9 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
+library(tidyverse)
 knitr::opts_chunk$set(echo = TRUE)
+bball_tab <- read_csv("~/CMSC320-Final-Project/cbb.csv")
 ```
 
 
