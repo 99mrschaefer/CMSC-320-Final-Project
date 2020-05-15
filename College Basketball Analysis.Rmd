@@ -7,11 +7,46 @@ knit: (function(input_file, encoding) {
  output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
 output: html_document
 ---
-
+T
 ```{r setup, include=FALSE}
 library(tidyverse)
-knitr::opts_chunk$set(echo = TRUE)
-bball_tab <- read_csv("~/CMSC320-Final-Project/cbb.csv")
+library(stringr)
+```
+This code below loads the untouched dataframe then creates a new dataframe used to clean up the data. For the 
+most part, the data is already tidy, with a team's performance in one season being an entity. Here, we add a column
+which we will fill out later assigning an integer value to a team's postseason performance ("pstsn_rank"). We also
+add an attribute called win_ratio, which computes the wins to games played ratio.
+```{r initialize dataframe}
+bball_tab <- read_csv("~/CMSC320-Final-Project/cbb.csv", col_types = cols())
+clean_bball <- bball_tab %>% 
+  filter(!is.na(`POSTSEASON`)) %>%
+  mutate(pstsn_rank=0) %>%
+  mutate(win_ratio=W/G)
+```
+
+This section takes the text feature of the original table and assigns a number to the 
+```{r clean_data}
+for (i in 1:340) {
+  j<-clean_bball[i,"POSTSEASON"]
+  if(j=="Champions"){
+    clean_bball[i,"pstsn_rank"]<-7
+  } else if(clean_bball[i,"POSTSEASON"]=="2ND"){
+    clean_bball[i,"pstsn_rank"]<-6
+  } else if(clean_bball[i,"POSTSEASON"]=="F4"){
+    clean_bball[i,"pstsn_rank"]<-5
+  } else if(clean_bball[i,"POSTSEASON"]=="E8"){
+    clean_bball[i,"pstsn_rank"]<-4
+  } else if(clean_bball[i,"POSTSEASON"]=="S16"){
+    clean_bball[i,"pstsn_rank"]<-3
+  } else if(clean_bball[i,"POSTSEASON"]=="R32"){
+    clean_bball[i,"pstsn_rank"]<-2
+  } else if(clean_bball[i,"POSTSEASON"]=="R64"){
+    clean_bball[i,"pstsn_rank"]<-1
+  } else {
+    clean_bball[i,"pstsn_rank"]<-0
+  }
+}
+
 ```
 
 
