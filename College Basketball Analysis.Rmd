@@ -17,10 +17,12 @@ efficacy.
 The steps are as follows:
 
 1. Data cleaning
-    + Remove unnecessary attributes
+    + Read & investigate data/entities/attributes
     + Add necessary attributes
-    + Partition data into a training and testing set
     + Adjust postseason attribute so that it is represented as an integer value
+    + Remove unnecessary attributes
+    + Standardize continuous attributes
+    + Partition data into a training and testing set
 2. Exploratory Data Analysis
     + Univariate analysis
     + Bivariate analysis
@@ -126,7 +128,10 @@ It also includes games, wins, and postseason since we have effectively replaced 
 ```{r remove}
 ncaa_tab <- clean_bball[,c(26,27,25,23,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,24)]
 ncaa_tab <- subset(ncaa_tab, select = -c(TEAM,CONF,G,W,POSTSEASON,YEAR,EFG_O, EFG_D, TOR, TORD, ORB, DRB, FTR, FTRD, ADJ_T, WAB))
+```
 
+### 1.6 Standardize continuous data
+```{r standardize cont. data}
 ncaa_tab<-ncaa_tab %>%
   mutate(std_winrat=(win_ratio-mean(win_ratio))/(sd(win_ratio))) %>%
   mutate(std_adjoe=(ADJOE-mean(ADJOE))/(sd(ADJOE))) %>%
@@ -134,7 +139,7 @@ ncaa_tab<-ncaa_tab %>%
   mutate(std_barthag=(BARTHAG-mean(BARTHAG))/(sd(BARTHAG)))
 ```
 
-### 1.5 Partition the data
+### 1.7 Partition the data
 We partition the data into a training set and validation set. The training set will take a random sampling of 75%
 of the data while the validation set will take the remaining 25% of the data.
 
@@ -228,3 +233,43 @@ title("Violin Plot of Standardized BARTHAG")
 The data is now centered nearer to zero, however, the negative skew prevents even distribution.
 
 ### 2.2 Bivariate analysis
+
+Now, we'll look at how each variable impacts team's postseason performance
+
+```{r seed and post}
+ncaa_tab %>%
+  ggplot(aes(x=SEED,y=pstsn_rank)) +
+  geom_point() + 
+  geom_smooth(method=lm)
+```
+
+```{r winrat and post}
+ncaa_tab %>%
+  ggplot(aes(x=std_winrat,y=pstsn_rank)) +
+  geom_point() + 
+  geom_smooth(method=lm)
+```
+
+```{r barthag and post}
+ncaa_tab %>%
+  ggplot(aes(x=std_barthag,y=pstsn_rank)) +
+  geom_point() + 
+  geom_smooth(method=lm)
+```
+
+```{r off and post}
+ncaa_tab %>%
+  ggplot(aes(x=std_adjoe,y=pstsn_rank)) +
+  geom_point() + 
+  geom_smooth(method=lm)
+```
+
+```{r def and post}
+ncaa_tab %>%
+  ggplot(aes(x=std_adjde,y=pstsn_rank)) +
+  geom_point() + 
+  geom_smooth(method=lm)
+```
+
+### 2.3 Multivariate analysis
+
