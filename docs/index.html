@@ -460,6 +460,11 @@ glimpse(bball_tab)</code></pre>
 ncaa_tab &lt;- clean_bball[,c(26,27,25,23,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,24)]
 ncaa_tab &lt;- subset(ncaa_tab, select = -c(TEAM,CONF,G,W,POSTSEASON,YEAR))</code></pre>
 </div>
+<div id="partition-the-data" class="section level3">
+<h3>1.4 Partition the data</h3>
+<p>We partition the data into a training set and validation set. The training set will take a random sampling of 75% of the data while the validation set will take the remaining 25% of the data.</p>
+<pre class="r"><code>set.seed(1234)</code></pre>
+</div>
 </div>
 
 
