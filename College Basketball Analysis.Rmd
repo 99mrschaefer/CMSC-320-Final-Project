@@ -7,30 +7,67 @@ knit: (function(input_file, encoding) {
  output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
 output: html_document
 ---
-T
+## 1. Introduction
+
+This notebook will cover the process of EDA and modeling of NCAA March Madness tournament data with the goal of
+developing a model that will be able to accurately predict a team's postseason performance given their season record
+and tournament seed. This document will go over a couple different ways to build the model and contrast their 
+efficacy.
+
+The steps are as follows:
+
+1. Data cleaning
+    + Remove unnecessary attributes
+    + Add necessary attributes
+    + Partition data into a training and testing set
+    + Adjust postseason attribute so that it is represented as an integer value
+2. Exploratory Data Analysis
+    + Univariate analysis
+    + Bivariate analysis
+    + Multivariate analysis
+3. Model Building
+    + Random Forest
+    + Linear Regression
+4. Model Evaluation & Conclusions
+
+### 1.1 Setting up necessary libraries
 ```{r setup, include=FALSE}
-library(tidyverse)
-library(stringr)
-library(ggplot2)
-library(dplyr)
-library(readr)
-library(tidyr)
-library(magrittr)
+library(tidyverse) # data manipulation
+library(stringr) # string manipulation + data cleaning
+library(ggplot2) # data vizualization
+library(dplyr) # data manipulation
+library(readr) # csv reading
+library(tidyr) # creating tidy data
+library(magrittr) # working with pipelines
 ```
+
+### 1.2 Reading in data and evaluating its organization
 This code below loads the untouched dataframe then creates a new dataframe used to clean up the data. For the 
 most part, the data is already tidy, with a team's performance in one season being an entity. Here, we add a column
 which we will fill out later assigning an integer value to a team's postseason performance ("pstsn_rank"). We also
 add an attribute called win_ratio, which computes the wins to games played ratio.
 ```{r initialize dataframe}
 bball_tab <- read_csv("~/CMSC320-Final-Project/cbb.csv", col_types = cols())
+glimpse(bball_tab)
+```
+We see that there are 1757 entities with 24 attributes each. 21 of these attributes are doubles while the remaining
+three are characters. The 'POSTSEASON' attribute is of special interest to us, since this is the aspect we are 
+aiming to predict.
+
+### 1.3 Cleaning the data
+Here, we disregard any teams who did not make it into the NCAA tournament (their postseason attribute is listed as 
+NA), and we add columns for a new, discrete numerical postseason attribute as well as a attribute for entity number
+one for win-loss ratio
+```{r clean data}
 clean_bball <- bball_tab %>% 
   filter(!is.na(`POSTSEASON`)) %>%
   mutate(pstsn_rank=0) %>%
   mutate(entityid=row_number()) %>%
-  mutate(win_ratio=W/G)
+  mutate(win_ratio=W/(G-W))
 ```
 
-This section takes the text feature of the original table and assigns a number to the 
+This section takes the text attribute, POSTSEASON, of the original table and assigns a corresponding number to each
+entity. The champion is assigned 7, the second place team 6, teams who made it to the semi finals 5, and so on.
 ```{r clean_data}
 for (i in 1:340) {
   j<-clean_bball[i,"POSTSEASON"]
