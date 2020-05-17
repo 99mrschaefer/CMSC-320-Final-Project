@@ -39,6 +39,7 @@ library(dplyr) # data manipulation
 library(readr) # csv reading
 library(tidyr) # creating tidy data
 library(magrittr) # working with pipelines
+library(vioplot) # violin plots
 ```
 
 ### 1.2 Reading in data and evaluating its organization
@@ -80,7 +81,7 @@ aiming to predict.
 * SEED - tournament seed
 * YEAR - season of play/tournament
 
-### 1.4 Add and remove attributes
+### 1.4 Add attributes
 Here, we disregard any teams who did not make it into the NCAA tournament (their postseason attribute is listed as 
 NA), and we add columns for a new, discrete numerical postseason attribute as well as a attribute for entity number
 one for win-loss ratio
@@ -115,9 +116,22 @@ for (i in 1:340) {
     clean_bball[i,"pstsn_rank"]<-0
   }
 }
+```
 
+### 1.5 Remove unnecessary attributes
+We remove all attributes that do not impact our analysis, including team, conference, and year.
+For simplicity's sake, we also remove attributes that intuitively are less important to the outcome of the 
+tournament: EFG_O, EFG_D, TOR, TORD, ORB, DRB, FTR, FTRD, 2P0, 2PD, 3P0, 3PD, ADJ_T, and WAB.
+It also includes games, wins, and postseason since we have effectively replaced these attributes.
+```{r remove}
 ncaa_tab <- clean_bball[,c(26,27,25,23,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,24)]
-ncaa_tab <- subset(ncaa_tab, select = -c(TEAM,CONF,G,W,POSTSEASON,YEAR))
+ncaa_tab <- subset(ncaa_tab, select = -c(TEAM,CONF,G,W,POSTSEASON,YEAR,EFG_O, EFG_D, TOR, TORD, ORB, DRB, FTR, FTRD, ADJ_T, WAB))
+
+ncaa_tab<-ncaa_tab %>%
+  mutate(std_winrat=(win_ratio-mean(win_ratio))/(sd(win_ratio))) %>%
+  mutate(std_adjoe=(ADJOE-mean(ADJOE))/(sd(ADJOE))) %>%
+  mutate(std_adjde=(ADJDE-mean(ADJDE))/(sd(ADJDE))) %>%
+  mutate(std_barthag=(BARTHAG-mean(BARTHAG))/(sd(BARTHAG)))
 ```
 
 ### 1.5 Partition the data
@@ -142,8 +156,75 @@ We now have one training data set with 255 entities and another testing set with
 ## 2. Exploratory Data Analysis
 
 For our EDA, we'll use the entire data set to get the best representation of the data.
+
+### 2.1 Univariate analysis
 First, we look at the univariate distributions.
 
+Below looks at the univariate distribution of tournament placement:
 ```{r univar1}
-
+ncaa_tab %>% 
+  ggplot(aes(x=pstsn_rank)) + 
+  geom_histogram(stat="count",fill="red")
 ```
+Based on the way the tournament works, the data is distibuted as expected. A handful of the lower ranking teams are
+eliminated in qualifying games, then elimination works as a factor of $TotalData*(\frac{1}{2})^r$ where r is rank.
+
+Next we look at distribution of seed:
+```{r univar2}
+ncaa_tab %>% 
+  ggplot(aes(x=SEED)) + 
+  geom_histogram(stat="count",fill="red")
+```
+For the most part, seed is uniformly distributed. Notable exceptions are 11th and 16th seed, as they compete in a 
+pre-qualifying round where 68 teams are narrowed to 64.
+
+Now, let's take a look at win-loss ratio:
+```{r uninvar3}
+ncaa_tab %>%
+  ggplot(aes(x=win_ratio)) +
+    geom_density()
+```
+We can see that data is not well centered, and several outliers are much greater than the majority of the data,
+thus we will use a slightly better representation, the standardized win-loss:
+```{r uninvar4}
+ncaa_tab %>%
+  ggplot(aes(x=std_winrat)) +
+    geom_density()
+```
+While outliers are still a problem, data is much better distributed.
+
+Next, we look at offensive efficiency:
+```{r univar5}
+vioplot(ncaa_tab$ADJOE, ncaa_tab$ADJDE, names=c("Offensive Eff.","Defensive Eff."))
+title("Violin Plots of Offensive and Defensive Efficiency (pts./100 possessions)")
+```
+These violin plots show that teams are distributed very normally by their offensive/defensive efficiency, with 
+little to no skew and a clear concentration of data at the median. The plots also shows that teams are generally
+more efficient offensively relative to defensively. This makes sense, since this group of teams performed highly 
+relative to the rest of the nation, implying that a majority of the time, they must score more points per 100
+possessions than are scored against them.
+
+While the standardized data does not show the disparity, it will make it easier to compare entities. Thus, below
+is the corresponding violin plot:
+```{r univar6}
+vioplot(ncaa_tab$std_adjoe, ncaa_tab$std_adjde, names=c("Offensive Eff.","Defensive Eff."))
+title("Violin Plots of Standardized Offensive and Defensive Efficiency")
+```
+We can observe that both data sets are centered at zero and distributed fairly evenly.
+
+Lastly, we observe BARTHAG:
+```{r univar7}
+vioplot(ncaa_tab$BARTHAG, names=c("BARTHAG"))
+title("Violin Plot of Prob. of Beating Avg. Division I Team (BARTHAG)")
+```
+As we might guess, since this is a collection of the best ranked teams, they data is clustered above .8, meaning
+that most teams in the tournament have a very good chance of defeating an average DI team.
+
+To work with this stat better, let's look at the standardized version:
+```{r univar8}
+vioplot(ncaa_tab$std_barthag, names=c("BARTHAG"))
+title("Violin Plot of Standardized BARTHAG")
+```
+The data is now centered nearer to zero, however, the negative skew prevents even distribution.
+
+### 2.2 Bivariate analysis
