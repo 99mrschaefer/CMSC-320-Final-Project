@@ -54,7 +54,33 @@ We see that there are 1757 entities with 24 attributes each. 21 of these attribu
 three are characters. The 'POSTSEASON' attribute is of special interest to us, since this is the aspect we are 
 aiming to predict.
 
-### 1.3 Cleaning the data
+### 1.3 Investigate attributes
+* TEAM - team/school name
+* CONF - conference id
+* G - games played
+* W - wins
+* ADJOE - points scored per 100 possessions
+* ADJDE - points allowed per 100 possessions
+* BARTHAG - probability of beating avg. DIV I team
+* EFG_O - field goal pctg
+* EFG_D - defensive field goal pctg
+* TOR - turnover rate
+* TORD - steal rate
+* ORB - offensive rebound pctg
+* DRB - defensive rebound pctg
+* FTR - free throw pctg
+* FTRD - defensive free throw pctg
+* 2P0 - 2 point shooting pctg
+* 2PD - defensive 2 point shooting pctg
+* 3P0 - 3 point shooting pctg
+* 3PD - defensive 3 point shooting pctg
+* ADJ_T - possessions per 40 minutes
+* WAB - wins above necessary amount to qualify for postseason
+* POSTSEASON - round of the postseason the team made it to
+* SEED - tournament seed
+* YEAR - season of play/tournament
+
+### 1.4 Add and remove attributes
 Here, we disregard any teams who did not make it into the NCAA tournament (their postseason attribute is listed as 
 NA), and we add columns for a new, discrete numerical postseason attribute as well as a attribute for entity number
 one for win-loss ratio
@@ -94,11 +120,30 @@ ncaa_tab <- clean_bball[,c(26,27,25,23,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17
 ncaa_tab <- subset(ncaa_tab, select = -c(TEAM,CONF,G,W,POSTSEASON,YEAR))
 ```
 
-### 1.4 Partition the data
+### 1.5 Partition the data
 We partition the data into a training set and validation set. The training set will take a random sampling of 75%
 of the data while the validation set will take the remaining 25% of the data.
 
 ```{r partition}
+# set seed to make partition reproducible
 set.seed(1234)
+
+# set sample size
+smp_size <- floor(0.75 * nrow(ncaa_tab))
+
+train_ind <- sample(seq_len(nrow(ncaa_tab)), size = smp_size)
+
+train <- ncaa_tab[train_ind, ]
+test <- ncaa_tab[-train_ind, ]
+```
+
+We now have one training data set with 255 entities and another testing set with 85. On to the next phase!
+
+## 2. Exploratory Data Analysis
+
+For our EDA, we'll use the entire data set to get the best representation of the data.
+First, we look at the univariate distributions.
+
+```{r univar1}
 
 ```
