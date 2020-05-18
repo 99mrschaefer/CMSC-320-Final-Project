@@ -41,7 +41,7 @@ The steps are as follows:
 3. Model Building & Evaluationn
     + Decision Tree
     + Random Forest
-5. Conclusions
+4. Conclusions
 
 ### 1.1 Setting up necessary libraries
 
@@ -63,7 +63,8 @@ library(magrittr) # working with pipelines
 library(vioplot) # violin plots
 library(rpart) # decision trees
 library(rpart.plot) # plotting decision trees
-library(randomForest)
+library(randomForest) # random forest
+library(cvTools) # cross validation
 ```
 
 ### 1.2 Reading in data and evaluating its organization
@@ -232,7 +233,8 @@ for this library can be found <a href=https://cran.r-project.org/web/packages/vi
 ### 2.1 Univariate analysis
 First, we look at the univariate distributions. This entails observing distributions of individual attributes.
 
-Below we look at the univariate distribution of tournament placement using a histogram:
+Below we look at the univariate distribution of tournament placement. Since the data can only be
+one of eight values (this attribute is discrete numerical), we will use a histogram:
 ```{r univar1}
 ncaa_tab %>% 
   ggplot(aes(x=pstsn_rank)) + 
@@ -243,7 +245,7 @@ Based on the way the tournament works, the data is distibuted as expected. A han
 are eliminated in <a href=https://ftw.usatoday.com/2018/03/march-madness-ncaa-tournament-no-11-seed-first-four-play-in-16-bracket-rules-selection>
 qualifying games</a>, then elimination works as a factor of $TotalData*(\frac{1}{2})^r$ where r is rank.
 
-Next we look at distribution of seed via a histogram:
+Next we look at distribution of seed similarly via a histogram:
 ```{r univar2}
 ncaa_tab %>% 
   ggplot(aes(x=SEED)) + 
@@ -253,7 +255,8 @@ ncaa_tab %>%
 For the most part, seed is uniformly distributed. Notable exceptions are 11th and 16th seed, as they compete in
 the aforementioned pre-qualifying round where 68 teams are narrowed to 64.
 
-Now, let's take a look at win-loss ratio, this time using a density plot:
+Now, let's take a look at win-loss ratio. This data is cannot be counted the same way as the above data since
+team's win loss ratios are continuous instead of discrete, so this time we'll use a density plot. 
 ```{r uninvar3}
 ncaa_tab %>%
   ggplot(aes(x=win_ratio)) +
@@ -271,18 +274,24 @@ ncaa_tab %>%
 
 While outliers are still a problem, data is much better distributed.
 
-Next, we look at offensive efficiency using violin plots:
+Next, we look at offensive and defensive efficiency. We can view them on the same plot, since both use the same
+metric: points (for and against) per 100 possessions. Rather than using a density plot, we'll use 
+a different vizualiation which allows us to see the median directly as well as the distribution of 
+data and the presence of outliers - violin plots:
 ```{r univar5}
 vioplot(ncaa_tab$ADJOE, ncaa_tab$ADJDE, names=c("Offensive Eff.","Defensive Eff."))
 title("Violin Plots of Offensive and Defensive Efficiency (pts./100 possessions)")
 ```
 
+Outliers would show up on violin plots as points off to the ends of the violin shapes.
 These violin plots show that teams are distributed very normally by their offensive/defensive efficiency, with 
-little to no skew. The shape and positioning of the white circle shows a clear concentration of data at the 
-median. The plots also shows that teams are generally more efficient offensively relative to defensively. This  
-makes sense, since the teams in our dataset performed highly relative to the rest of the nation in order to
-qualify for the tournament, implying that a majority of the time, they must score more points per 100
-possessions than are scored against them.
+little to no skew since there are no outliers visible. The shape and positioning of the white circle shows a 
+clear concentration of data at the median. The plots also shows that teams are generally more efficient 
+offensively relative to defensively. This makes sense, since the teams in our dataset performed highly relative 
+to the rest of the nation in order to qualify for the tournament, implying that a majority of the time, they 
+must score more points per 100 possessions than are scored against them. <a 
+href=https://mode.com/blog/violin-plot-examples/>Here</a> is a helpful resource which gives a bit more detail on 
+violin plots.
 
 While the standardized data does not show the disparity, it will make it easier to compare entities. Thus, below
 is the corresponding violin plot:
@@ -299,9 +308,10 @@ vioplot(ncaa_tab$BARTHAG, names=c("BARTHAG"))
 title("Violin Plot of Prob. of Beating Avg. Division I Team (BARTHAG)")
 ```
 
-We can see thqt this data is skewed negatively. As we might guess, since this is a collection of the best ranked 
-teams, they data is clustered above .8, meaning that most teams in the tournament have a very good chance of 
-defeating an average DI team.
+Again, we see that there are no outliers, however, based on the long tail in the negative direction, we can see 
+that this data is skewed negatively. As we might guess, (since this is a collection of the best ranked 
+teams), the data is clustered above .8, showing how a sizeable majority of teams in the tournament have a very 
+good chance of defeating an average DI team.
 
 To work with this stat better, let's look at the standardized version:
 ```{r univar8}
@@ -313,8 +323,11 @@ The data is now centered nearer to zero, however, the negative skew still preven
 
 ### 2.2 Bivariate analysis
 
-Now, we'll look at how each variable impacts team's postseason performance
+Now, we'll look at how each variable impacts team's postseason performance by plotting postseason rank on the 
+y axis and the other attributes on the x axis.
 
+Here is the relationship between seed and postseason performance using a scatter plot. We also use the 
+geom_smooth() command with the linear methond (lm) to approximate a linear relationship:
 ```{r seed and post}
 ncaa_tab %>%
   ggplot(aes(x=SEED,y=pstsn_rank)) +
@@ -322,7 +335,11 @@ ncaa_tab %>%
   geom_smooth(method=lm)
 ```
 
-This graph shows us that 
+This graph and the linear approximation shows us that the lower number a seed is, the better they perform in the 
+tournament. This is intuitive, since better ranked teams are seeded lower.
+
+Now we observe how win-loss rate affects postseason performance similarly using a scatter plot and a linear
+approximation:
 ```{r winrat and post}
 ncaa_tab %>%
   ggplot(aes(x=std_winrat,y=pstsn_rank)) +
@@ -330,6 +347,7 @@ ncaa_tab %>%
   geom_smooth(method=lm)
 ```
 
+We repeat for barthag:
 ```{r barthag and post}
 ncaa_tab %>%
   ggplot(aes(x=std_barthag,y=pstsn_rank)) +
@@ -337,6 +355,10 @@ ncaa_tab %>%
   geom_smooth(method=lm)
 ```
 
+Again, our linear relationship is intuitive, as one would expect a higher chance of defeating an average team
+would correlate with a better postseason performance.
+
+We repeat for offensive efficiency:
 ```{r off and post}
 ncaa_tab %>%
   ggplot(aes(x=std_adjoe,y=pstsn_rank)) +
@@ -344,12 +366,19 @@ ncaa_tab %>%
   geom_smooth(method=lm)
 ```
 
+Again, our result makes sense since a more efficient offense will allow a team to perfom better in the 
+tournament.
+
+We repeat again for defensive efficiency:
 ```{r def and post}
 ncaa_tab %>%
   ggplot(aes(x=std_adjde,y=pstsn_rank)) +
   geom_point() + 
   geom_smooth(method=lm)
 ```
+
+Yet again, the relationship makes sense since fewer points against on average will allow a team to perform 
+better in the tournament.
 
 ### 2.3 Multivariate analysis
 
@@ -358,6 +387,13 @@ performance.
 
 Note that the general trend observed in the bivariate analysis above showed that a lower seed corresponded with 
 a better performance in the tournament on average.
+
+For this section, we'll repeat the scatter plots used above omitting the one corresponding to seed, this time
+incorporating the seed attribute into each plot using the color option in ggplot2.
+
+This allows us to see the conditional relationship between postseason performance and each attribute conditioning
+on their seed. <a href=https://www.mathsisfun.com/data/probability-events-conditional.html>This resource</a> 
+gives more information on conditional probabilities.
 
 Below, we see that teams with high win-loss rate which have better postseason records are generally overlap with 
 the teams have a low seed and vice versa.
@@ -395,8 +431,8 @@ ncaa_tab %>%
   geom_smooth(method=lm)
 ```
 
-Based on the bivariate and multivariate analyses, it's clear that there is correlation between each attribute and 
-postseason performance. However, it's not clear whether these attributes independently influence postseason 
+Based on the bivariate and multivariate analyses, it's clear that there is correlation between each attribute 
+and postseason performance. However, it's not clear whether these attributes independently influence postseason 
 performance or whether some cause others leading all of them to show correlation. Based on these findings, our
 model will take all attributes (seed, win ratio, offensive efficiency, defensive efficiency and BARTHAG) into 
 account
@@ -407,48 +443,56 @@ Because we are trying to predict the tournament round a team will reach (0-7, 0 
 and 7 being a championship), we cannot use linear regression, since our goal is predicting a categorical 
 attribute. Thus, the two models we will explore will be decision trees and random forests.
 
-### 3.1 Decision Tree
-
-```{r decn tree}
-tree <- rpart(pstsn_rank~SEED+std_winrat+std_adjoe+std_adjde+std_barthag, data=train)
-rpart.plot(tree)
-```
-
-### 3.2 Random Forest
-
-```{r rand forest}
-
-```
-
 ## 4. Model Evaluation
+```{r}
+ncaa_tab <- subset(ncaa_tab, select = -c(ADJOE,ADJDE,BARTHAG,win_ratio))
+```
 
 ```{r}
 fold_indices <- cvFolds(n=nrow(ncaa_tab), K=10)
 
-error_rates <- sapply(1:10, function(fold_index) {
+error_rates_bytwo <- sapply(1:10, function(fold_index) {
   test_indices <- which(fold_indices$which == fold_index)
-  test_set <- Default[test_indices,]
-  train_set <- Default[-test_indices,]
+  test_set <- ncaa_tab[test_indices,]
+  train_set <- ncaa_tab[-test_indices,]
   
-  #logis_fit <- glm(default~., data=train_set, family="binomial")
-  #logis_pred <- ifelse(predict(logis_fit, newdata=test_set, type="response") > 0.5, "Yes", "No")
-  #logis_error <- mean(test_set$default != logis_pred)
+  forest = randomForest(x = train_set[-1], y = train_set$pstsn_rank,
+                          ntree = 500, random_state = 0)
+  forest_pred = predict(forest, newdata = test_set[-1], type="response")
+  forest_error <- mean(abs(test_set$pstsn_rank - round(forest_pred))>2)
   
-  tree <- rpart(pstsn_rank~SEED+std_winrat+std_adjoe+std_adjde+std_barthag, data=train)
-
-  tree_pred <- predict(tree, newdata=test_set, type="class")
-  tree_error <- mean(test_set$pstsn_rank != round(tree_pred))
-  c(rand_error, tree_error)
+  tree <- rpart(pstsn_rank~SEED+std_winrat+std_adjoe+std_adjde+std_barthag, data=train_set)
+  tree_pred <- predict(tree, newdata=test_set, type="vector")
+  tree_error <-  mean(abs(test_set$pstsn_rank - round(tree_pred))>2)
+  forest_error1 <- mean(test_set$pstsn_rank != round(forest_pred))
+  tree_error1 <-  mean(test_set$pstsn_rank != round(tree_pred))
+  c(forest_error, tree_error,forest_error1,tree_error1)
   })
-rownames(error_rates) <- c("forest", "tree")
-error_rates <- as.data.frame(t(error_rates))
 
-error_rates <- error_rates %>%
+
+
+rownames(error_rates_bytwo) <- c("forest", "tree","forest1","tree1")
+error_rates_bytwo <- as.data.frame(t(error_rates_bytwo))
+
+error_rates_two <- error_rates_bytwo %>%
   mutate(fold=1:n()) %>%
   gather(method,error,-fold)
+```
 
-error_rates %>%
-  head() %>%
+```{r}
+error_rates_one <- error_rates_two[21:40,]
+error_rates_two <- error_rates_two[1:20,]
+```
+
+```{r}
+error_rates_one %>%
+  head(20) %>%
+  knitr::kable("html")
+```
+
+```{r}
+error_rates_two %>%
+  head(20) %>%
   knitr::kable("html")
 ```
 
