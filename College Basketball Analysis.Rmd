@@ -8,6 +8,8 @@ knit: (function(input_file, encoding) {
 output: html_document
 ---
 
+#### By Matt Schaefer - (Solo Project)
+
 ## 1. Introduction
 
 Every spring, (those occurring during pandemics excepted), millions of Americans draw up brackets and bet on
@@ -42,6 +44,7 @@ The steps are as follows:
     + Decision Tree
     + Random Forest
 4. Conclusions
+5. Citations
 
 ### 1.1 Setting up necessary libraries
 
@@ -423,67 +426,197 @@ attribute. Thus, the two models we will explore will be a decision trees and a r
 
 From now on, we'll use our standardized data, so we drop our unstandardized data:
 ```{r}
-ncaa_tab <- subset(ncaa_tab, select = -c(ADJOE,ADJDE,BARTHAG,win_ratio))
+ncaa_tab <- subset(ncaa_tab, select = -c(ADJOE,ADJDE,BARTHAG,win_ratio)) # dropping columns
 ```
 
-<a href=https://machinelearningmastery.com/difference-test-validation-datasets/>common concept</a>
+The first classification we will use is a decision tree. As explained in a <a href=https://towardsdatascience.com/decision-trees-in-machine-learning-641b9c4e8052>Towards Data Science article^12^</a>,
+a decision tree is "drawn upside-down with its root at the top." Essentially, the structure represents the 
+model's prediction algorithm. At every node there is a condition, and the predicted outcome is found by going to 
+the leaf that corresponds to the entity's data. There are two main types of decision trees: classification and 
+regression trees. Classification tree aim to predict categorical attributes, whereas we are predicting a 
+numerical attribute, so the type we use in this case is a regression tree. Essentially, it takes  several 
+attributes into account and partitions the data in ways that split the data into significant chunks by set 
+values of the attributes. After a tree is synthesized, it often needs to be 'pruned.' This refers to the process
+of discarding the negligibly important decisions from the tree.
+
+Advantages of decision trees include easy vizualization, implicitly selecting which features to include in
+predictions, compatability with numerical and categorical data, and ability to work with non-linear 
+relationships. Disadvantages include potentially overfitting data, instability, and biases due to a select few 
+classes taking up most of the decisions.
+
+Here is code for and example of the type of decision tree we will be using, as well as a visual representation 
+of it using all of our available data:
+```{r dec tree}
+tree<-rpart(pstsn_rank~SEED+std_winrat+std_adjoe+std_adjde+std_barthag,data=ncaa_tab) # create tree, mapping
+# all other attributes to predict pstsn_rank, use ncaa_tab data
+prune.rpart(tree=tree,cp=NULL) # prune less important decisions off of tree
+rpart.plot(tree) # plot the tree below
+```
+
+As you can see in the visualization, the tree uses significant cutoff points found in the attributes fed into the
+tree in order to reach a conclusion about the predicted postseason rank of any given team.
+
+The other model we will be evaluating is the random forest. This type of model, described generally in <a 
+href=https://medium.com/@Synced/how-random-forest-algorithm-works-in-machine-learning-3c0fe15b6674^13^> this Medium article</a>, generates many trees using different combinations of the data. The random forest also uses a 
+random selection of the attributes. In this way, it avoids the potential bias of a decision tree. However, due to
+its complex synthesis of many trees, it cannot be visually represented as easily. For a more in-depth description
+of the intricacies of the random forest model, Berkely has a <a 
+href=https://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm>really detailed page^14^</a>.
+
+Here is an example of what the code to generate a random forest would look like:
+```{r rand forest}
+rand_forest <- randomForest(pstsn_rank~SEED+std_winrat+std_adjoe+std_adjde+std_barthag, importance=TRUE, mtry=3, data=ncaa_tab) # create random forest predicting postseason performance using all other attributes
+```
+
+As we said, the random forest sacrifices interpretability. However, the importance plot allows us to see which
+attributes are most integral to our prediction. Below is our code to get the importance plot followed by the 
+plot itself.
+```{r importance plot}
+varImpPlot(rand_forest) # plot importance of rand forest
+```
+
+From this plot, we can see that barthag and SEED are the attributes emphasized by our model the most.
+
+Now that we have covered the basics of both of our classification models, our next step is to compare the 
+efficacy of the two. In order to do this, we will use k-fold cross validation. 
+
+The idea behind this is based on developing a model using one dataset then testing the efficacy on a separate 
+data set, as described on <a href=https://machinelearningmastery.com/difference-test-validation-datasets/>
+this^15^</a> Machine Learning Mastery page. This is necessary, since the model will be fitted to the data it is 
+trained with, so you can't test it with the same data.
+
+What k-fold cross validation does is it repeats this process k times by dividing the full dataset into 
+k partitions and using one partition as a testing set at a time while using the remaining sets to train the 
+models. <a href=https://machinelearningmastery.com/k-fold-cross-validation/>This site^16^</a> gives a really thorough overview of the process.
+
+Below, we go about the process of running 10-fold cross validation to compare a decision tree and a random 
+forest.
 ```{r}
-set.seed(1234) # set seed to make partition reproducible
+set.seed(1234) # set seed to make partitions reproducible
 
-fold_indices <- cvFolds(n=nrow(ncaa_tab), K=10)
+fold_indices <- cvFolds(n=nrow(ncaa_tab), K=10) # get indices where data is partitioned
 
-error_rates_bytwo <- sapply(1:10, function(fold_index) {
+error_rates_bytwo <- sapply(1:10, function(fold_index) { # this function loads the error stats into a dataframe
   test_indices <- which(fold_indices$which == fold_index)
-  test_set <- ncaa_tab[test_indices,]
-  train_set <- ncaa_tab[-test_indices,]
+  test_set <- ncaa_tab[test_indices,] # this defines the test set
+  train_set <- ncaa_tab[-test_indices,] # this defines the training set
   
   forest = randomForest(x = train_set[-1], y = train_set$pstsn_rank,
-                          ntree = 500, random_state = 0)
-  forest_pred = predict(forest, newdata = test_set[-1], type="response")
-  forest_error <- mean(abs(test_set$pstsn_rank - round(forest_pred))>2)
+                          ntree = 500, random_state = 0) # This code trains a 500 tree random forest training all
+                          # attributes to predict pstsn_rank using training data
+  forest_pred = predict(forest, newdata = test_set[-1], type="response") # this generates the predictions of
+                          # postseason rank based on the test data
+  forest_error <- mean(abs(test_set$pstsn_rank - round(forest_pred))>=2) # this calculates the proportion of   
+                          # errors per prediction for the current fold giving a 1 off leeway by defining an 
+                          # error as when a prediction is off by more than 1
   
-  tree <- rpart(pstsn_rank~SEED+std_winrat+std_adjoe+std_adjde+std_barthag, data=train_set)
-  tree_pred <- predict(tree, newdata=test_set, type="vector")
-  tree_error <-  mean(abs(test_set$pstsn_rank - round(tree_pred))>2)
-  forest_error1 <- mean(test_set$pstsn_rank != round(forest_pred))
-  tree_error1 <-  mean(test_set$pstsn_rank != round(tree_pred))
-  c(forest_error, tree_error,forest_error1,tree_error1)
+  tree <- rpart(pstsn_rank~SEED+std_winrat+std_adjoe+std_adjde+std_barthag, data=train_set) # This code trains a 
+                          # decision tree to use all attributes to predict pstsn_rank using training data
+  tree_pred <- predict(tree, newdata=test_set, type="vector") # generates predictions based on test data
+  tree_error <-  mean(abs(test_set$pstsn_rank - round(tree_pred))>=2) # this calculates the proportion of   
+                          # errors per prediction for the current fold giving a 1 off leeway by defining an 
+                          # error as when a prediction is off by more than 1
+  forest_error1 <- mean(test_set$pstsn_rank != round(forest_pred)) # this calculates error as strictly whether
+                          # prediction does not equal actual
+  tree_error1 <-  mean(test_set$pstsn_rank != round(tree_pred)) # this calculates error as strictly whether
+                          # prediction does not equal actual
+  c(forest_error, tree_error,forest_error1,tree_error1) # 
   })
 
-
-
 rownames(error_rates_bytwo) <- c("forest", "tree","forest1","tree1")
-error_rates_bytwo <- as.data.frame(t(error_rates_bytwo))
+error_rates_bytwo <- as.data.frame(t(error_rates_bytwo)) # tabulate data
 
-error_rates_two <- error_rates_bytwo %>%
+error_rates_two <- error_rates_bytwo %>% # add fold column and finalize dataframe
   mutate(fold=1:n()) %>%
   gather(method,error,-fold)
 
-error_rates_one <- error_rates_two[21:40,]
-error_rates_twoo <- error_rates_two[1:20,]
+error_rates_one <- error_rates_two[21:40,] # split off error rate where error is when pred != outcome
+error_rates_twoo <- error_rates_two[1:20,] # split off error rate where error is when pred is more than one off
 ```
 
+Below is the table comparing the forest and tree models when an error is defined as when the predicted postseason
+performance is the same as the outcome
 ```{r}
-error_rates_one %>%
+error_rates_one %>% # display error data where error is when pred != outcome
   head(20) %>%
   knitr::kable("html")
 ```
 
+Based on the above table, we can see that both models have similar accuracy. When an error is defined as the 
+prediction being incorrect, both models predict incorrectly around ~50% of the time.
+
+The table below comparing the forest and tree models when an error is defined as when the predicted postseason
+performance is one off or less relative to the outcome
 ```{r}
-error_rates_twoo %>%
+error_rates_twoo %>% # display error data where error is when pred is more than one off
   head(20) %>%
   knitr::kable("html")
 ```
+
+As might be expected, the more lax error definition results in lower error for both models. Again, neither model
+seems to perform significantly better. This time, error rate is around ~10%
 
 ```{r dotplot}
-dotplot(error~method, data=error_rates_two, ylab="Mean Prediction Error")
+dotplot(error~method, data=error_rates_two, ylab="Mean Prediction Error") # plot both defns of error for each                                                                              # model
 ```
 
+This dot plot solidifies our above conclusions. Neither model is significantly better. Additionally, they are
+both mediocre when it comes to exactly predicting tournament placement. However, around 90% of the time they 
+can predict at an accuracy of +/-1.
 ```{r rates}
-lm(error~method, data=error_rates_two) %>% 
+lm(error~method, data=error_rates_two) %>% # show table of error data
   tidy() %>%
   knitr::kable()
 ```
 
+This table reinforces the conclusions we reached based on the dot plot.
+
 ## 4. Conclusions
 
+We originally set out to create models which could boost a person's likelihood of drawing up a successful March
+Madness bracket. We tidied our data, creating a data set where each entity was a college basketball team in a 
+single season and kept the most relevant attributes, tweaking them to different data types when convenient.
+We used data vizualization to explore the relationships between attributes and found that there was linear
+correlation between all of our attributes and postseason performance. We then used cross validation to compare
+the accuracy of two classifications models: a decision tree and a random forest.
+
+Based on our findings, neither model would allow us to pick a flawless bracket. However, our goal was to find a 
+model that could help us build a __better__ bracket, not a perfect one. This is why I chose to also evaluate how
+the models performed when a correct choice includes being off by a single round. In this case, both models' 
+performances become much better. Thus, while neither model is significantly different from the other, both have 
+the potential to be useful tools when drawing up brackets, since they can certainly help narrow down which rounds
+a team may advance to. 
+
+## 5. Citations
+
+[1] “Department of Mathematics.” [Online]. Available: https://math.duke.edu/news/duke-math-professor-says-odds-perfect-bracket-are-one-24-trillion. [Accessed: 18-May-2020].
+
+[2] G. Grolemund, “Quick list of useful R packages,” RStudio Support, 11-May-2020. [Online]. Available: https://support.rstudio.com/hc/en-us/articles/201057987-Quick-list-of-useful-R-packages. [Accessed: 18-May-2020].
+
+[3] N. T, “Difference Between Entity and Attribute in Database,” Binary Terms, 06-Apr-2020. [Online]. Available: https://binaryterms.com/difference-between-entity-and-attribute-in-database.html. [Accessed: 18-May-2020].
+
+[4] A. Sundberg, “NCAA Data at https://www.kaggle.com/andrewsundberg/college-basketball-dataset.” Mar-2020.
+
+[5] Mohityadav, “Understanding Data Attribute Types: Qualitative and Quantitative,” GeeksforGeeks, 06-Apr-2018. [Online]. Available: https://www.geeksforgeeks.org/understanding-data-attribute-types-qualitative-and-quantitative/. [Accessed: 18-May-2020].
+
+[6] Centering and Scaling; When and when not? Sartorius Stedim Data Analytics, 2017.
+
+[7] H. Wickham, “Create Elegant Data Visualisations Using the Grammar of Graphics,” Create Elegant Data Visualisations Using the Grammar of Graphics • ggplot2, 2016. [Online]. Available: https://ggplot2.tidyverse.org/. [Accessed: 18-May-2020].
+
+[8] S. T. Kelly, “Violin Plot [R package vioplot version 0.3.4],” The Comprehensive R Archive Network, 29-Nov-2019. [Online]. Available: https://cran.r-project.org/web/packages/vioplot/index.html. [Accessed: 18-May-2020].
+
+[9] M. R. Martinelli, “FTW Explains: Why do No. 11 seeds play in the First Four round of the NCAA tournament?,” USA Today, 13-Mar-2018. [Online]. Available: https://ftw.usatoday.com/2018/03/march-madness-ncaa-tournament-no-11-seed-first-four-play-in-16-bracket-rules-selection. [Accessed: 18-May-2020].
+
+[10] J. Carron, “Violin Plots 101: Visualizing Distribution and Probability Density,” Violin Plots 101: Visualizing Distribution and Probability Density, 26-Oct-2016. [Online]. Available: https://mode.com/blog/violin-plot-examples/. [Accessed: 18-May-2020].
+
+[11] “Conditional Probability,” Math Is Fun, 2017. [Online]. Available: https://www.mathsisfun.com/data/probability-events-conditional.html. [Accessed: 18-May-2020].
+
+[12] P. Gupta, “Decision Trees in Machine Learning,” Medium, 12-Nov-2017. [Online]. Available: https://towardsdatascience.com/decision-trees-in-machine-learning-641b9c4e8052. [Accessed: 18-May-2020].
+
+[13] Synced, “How Random Forest Algorithm Works in Machine Learning,” Medium, 25-Jun-2018. [Online]. Available: https://medium.com/@Synced/how-random-forest-algorithm-works-in-machine-learning-3c0fe15b6674. [Accessed: 18-May-2020].
+
+[14] L. Breiman and A. Cutler, “Random Forests,” Random forests - classification description. [Online]. Available: https://www.stat.berkeley.edu/~breiman/RandomForests/cc_home.htm. [Accessed: 18-May-2020].
+
+[15] J. Brownlee, “What is the Difference Between Test and Validation Datasets?,” Machine Learning Mastery, 26-Jul-2017. [Online]. Available: https://machinelearningmastery.com/difference-test-validation-datasets. [Accessed: 18-May-2020].
+
+[16] J. Brownlee, “A Gentle Introduction to k-fold Cross-Validation,” Machine Learning Mastery, 08-Aug-2019. [Online]. Available: https://machinelearningmastery.com/k-fold-cross-validation/. [Accessed: 18-May-2020].
