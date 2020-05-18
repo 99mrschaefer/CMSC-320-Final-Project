@@ -14,7 +14,7 @@ Every spring, (those occurring during pandemics excepted), millions of Americans
 the success and failure of 64 college basketball teams in a postseason finale known as March Madness. No one 
 has ever submitted a perfect bracket, and the odds of it happening are 2.4 trillion to one according to a 
 <a href="https://math.duke.edu/news/duke-math-professor-says-odds-perfect-bracket-are-one-24-trillion">Duke math
-professor</a>.
+professor^1^</a>.
 
 Sure, it's highly unlikely even the best mathematical model will allow a person to flawless predict the outcome
 of the entire tournament. But what if we could build a model that would improve predictions enough to win
@@ -48,7 +48,7 @@ The steps are as follows:
 Here, we include some helpful R libraries designed to make data science and data representation easy.
 The comments beside each library gives a basic description of what each is for. For more info on R libraries and 
 packages, click <a href=https://support.rstudio.com/hc/en-us/articles/201057987-Quick-list-of-useful-R-packages>
-here</a>. However, before using them on your own machine, remember that you need to install the package. You can 
+here^2^</a>. However, before using them on your own machine, remember that you need to install the package. You can 
 do this in RStudio by navigating to the lower right hand panel and clicking 'Packages,' or by using the command,
 install.packages("package name") in the console.
 
@@ -82,19 +82,20 @@ We want to see whether the data is tidy. This means that each row contains 1 ent
 In our case, an entity is a college basketball team in a single season. Our attributes include the team's name, 
 conference, and stats describing their performance. For more information on the distinction between entities and
 attributes, <a href=https://binaryterms.com/difference-between-entity-and-attribute-in-database.html>here is a 
-useful site</a>. We see with the glimpse command that our data is already tidy. We also see that there are 1757 
-entities with 24 attributes each. 21 of these attributes are doubles while the remaining three are characters. 
-The 'POSTSEASON' attribute is of special interest to us, since this is the aspect we are aiming to predict.
+useful site^3^</a>. We see with the glimpse command that our data is already tidy. We also see that there are 
+1757entities with 24 attributes each. 21 of these attributes are doubles while the remaining three are 
+characters. The 'POSTSEASON' attribute is of special interest to us, since this is the aspect we are aiming to 
+predict.
 
 ### 1.3 Investigate attributes
 
 Now that we know a bit more about the data's organization, we want to make sure we understand the data's 
 attributes and what they each mean. A full description can be found on <a 
-href=https://www.kaggle.com/andrewsundberg/college-basketball-dataset>kaggle</a>, where we downloaded
+href=https://www.kaggle.com/andrewsundberg/college-basketball-dataset>kaggle^4^</a>, where we downloaded
 our data set, but below is a summarization. I've also included a classification for each attribute. Some 
 common attribute types include text, continuous and discrete numeric, and unordered/ordered categorical. Click
-<a href=https://www.geeksforgeeks.org/understanding-data-attribute-types-qualitative-and-quantitative/>here</a> 
-for a detailed description of types of attributes and their differences.
+<a href=https://www.geeksforgeeks.org/understanding-data-attribute-types-qualitative-and-quantitative/>here^5^
+</a> for a detailed description of types of attributes and their differences.
 
 * TEAM - team/school name (text-nominal)
 * CONF - conference id (text-nominal)
@@ -185,7 +186,7 @@ Oftentimes, the best way to ensure data is easy to graph is by centering (settin
 (setting standard devation to 1) the data. This way, it becomes fairly evenly distributed, and it also shows 
 trends more clearly than when an outlier may have skewed the data range. Below, we scale and center all the 
 continuous numeric attributes in our set. Click <a 
-href=https://www.youtube.com/watch?time_continue=958&v=Vv69uhUiGU4&feature=emb_logo>this link</a> for a video 
+href=https://www.youtube.com/watch?time_continue=958&v=Vv69uhUiGU4&feature=emb_logo>this link^6^</a> for a video 
 explaining the merits of this process (it's a bit long, though).
 
 ```{r standardize cont. data}
@@ -196,17 +197,7 @@ ncaa_tab<-ncaa_tab %>%
   mutate(std_barthag=(BARTHAG-mean(BARTHAG))/(sd(BARTHAG)))
 ```
 
-### 1.7 Partition the data
-
-Later on, we'll build a model. This will entail feeding the model data so that it can 'learn' how different 
-attributes affect a team's postseason outcome. However, we can't put all of our data in the training set, or we
-won't be able to effectively test how accurate our model is. To this end, we split our data up into two sets:
-a training set and validation set. The training set will take a random sampling of 75% of the data while the 
-validation set will take the remaining 25% of the data. This is a <a
-href=https://machinelearningmastery.com/difference-test-validation-datasets/>common concept</a> in machine
-learning
-
-We now have one training data set with 255 entities and another testing set with 85. On to the next phase!
+Now on to the next phase!
 
 ## 2. Exploratory Data Analysis
 
@@ -214,8 +205,8 @@ For our EDA, we'll use the entire data set to get the best representation of the
 general trends in the data and observe relationships between attributes.
 
 We will mainly be using the ggplot2 library to do our plotting. Documentation can be found <a 
-href=https://ggplot2.tidyverse.org/>here</a>. We also utilize the vioplot library for violin plots. Documentation 
-for this library can be found <a href=https://cran.r-project.org/web/packages/vioplot/index.html>here</a>.
+href=https://ggplot2.tidyverse.org/>here^7^</a>. We also utilize the vioplot library for violin plots. 
+Documentation for this library can be found <a href=https://cran.r-project.org/web/packages/vioplot/index.html>here^8^</a>.
 
 ### 2.1 Univariate analysis
 First, we look at the univariate distributions. This entails observing distributions of individual attributes.
@@ -230,7 +221,7 @@ ncaa_tab %>%
 
 Based on the way the tournament works, the data is distibuted as expected. A handful of the lower ranking teams 
 are eliminated in <a href=https://ftw.usatoday.com/2018/03/march-madness-ncaa-tournament-no-11-seed-first-four-play-in-16-bracket-rules-selection>
-qualifying games</a>, then elimination works as a factor of $TotalData*(\frac{1}{2})^r$ where r is rank.
+qualifying games^9^</a>, then elimination works as a factor of $TotalData*(\frac{1}{2})^r$ where r is rank.
 
 Next we look at distribution of seed similarly via a histogram:
 ```{r univar2}
@@ -277,8 +268,8 @@ clear concentration of data at the median. The plots also shows that teams are g
 offensively relative to defensively. This makes sense, since the teams in our dataset performed highly relative 
 to the rest of the nation in order to qualify for the tournament, implying that a majority of the time, they 
 must score more points per 100 possessions than are scored against them. <a 
-href=https://mode.com/blog/violin-plot-examples/>Here</a> is a helpful resource which gives a bit more detail on 
-violin plots.
+href=https://mode.com/blog/violin-plot-examples/>Here^10^</a> is a helpful resource which gives a bit more 
+detail on violin plots.
 
 While the standardized data does not show the disparity, it will make it easier to compare entities. Thus, below
 is the corresponding violin plot:
@@ -379,7 +370,7 @@ For this section, we'll repeat the scatter plots used above omitting the one cor
 incorporating the seed attribute into each plot using the color option in ggplot2.
 
 This allows us to see the conditional relationship between postseason performance and each attribute conditioning
-on their seed. <a href=https://www.mathsisfun.com/data/probability-events-conditional.html>This resource</a> 
+on their seed. <a href=https://www.mathsisfun.com/data/probability-events-conditional.html>This resource^11^</a> 
 gives more information on conditional probabilities.
 
 Below, we see that teams with high win-loss rate which have better postseason records are generally overlap with 
@@ -435,6 +426,7 @@ From now on, we'll use our standardized data, so we drop our unstandardized data
 ncaa_tab <- subset(ncaa_tab, select = -c(ADJOE,ADJDE,BARTHAG,win_ratio))
 ```
 
+<a href=https://machinelearningmastery.com/difference-test-validation-datasets/>common concept</a>
 ```{r}
 set.seed(1234) # set seed to make partition reproducible
 
@@ -492,5 +484,6 @@ lm(error~method, data=error_rates_two) %>%
   tidy() %>%
   knitr::kable()
 ```
+
 ## 4. Conclusions
 
