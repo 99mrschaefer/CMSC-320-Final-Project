@@ -30,7 +30,8 @@ The steps are as follows:
 3. Model Building
     + Random Forest
     + Linear Regression
-4. Model Evaluation & Conclusions
+4. Model Evaluation
+5. Conclusions
 
 ### 1.1 Setting up necessary libraries
 ```{r setup, include=FALSE}
@@ -171,6 +172,7 @@ ncaa_tab %>%
   ggplot(aes(x=pstsn_rank)) + 
   geom_histogram(stat="count",fill="red")
 ```
+
 Based on the way the tournament works, the data is distibuted as expected. A handful of the lower ranking teams are
 eliminated in qualifying games, then elimination works as a factor of $TotalData*(\frac{1}{2})^r$ where r is rank.
 
@@ -180,6 +182,7 @@ ncaa_tab %>%
   ggplot(aes(x=SEED)) + 
   geom_histogram(stat="count",fill="red")
 ```
+
 For the most part, seed is uniformly distributed. Notable exceptions are 11th and 16th seed, as they compete in a 
 pre-qualifying round where 68 teams are narrowed to 64.
 
@@ -189,6 +192,7 @@ ncaa_tab %>%
   ggplot(aes(x=win_ratio)) +
     geom_density()
 ```
+
 We can see that data is not well centered, and several outliers are much greater than the majority of the data,
 thus we will use a slightly better representation, the standardized win-loss:
 ```{r uninvar4}
@@ -196,6 +200,7 @@ ncaa_tab %>%
   ggplot(aes(x=std_winrat)) +
     geom_density()
 ```
+
 While outliers are still a problem, data is much better distributed.
 
 Next, we look at offensive efficiency:
@@ -203,6 +208,7 @@ Next, we look at offensive efficiency:
 vioplot(ncaa_tab$ADJOE, ncaa_tab$ADJDE, names=c("Offensive Eff.","Defensive Eff."))
 title("Violin Plots of Offensive and Defensive Efficiency (pts./100 possessions)")
 ```
+
 These violin plots show that teams are distributed very normally by their offensive/defensive efficiency, with 
 little to no skew and a clear concentration of data at the median. The plots also shows that teams are generally
 more efficient offensively relative to defensively. This makes sense, since this group of teams performed highly 
@@ -215,6 +221,7 @@ is the corresponding violin plot:
 vioplot(ncaa_tab$std_adjoe, ncaa_tab$std_adjde, names=c("Offensive Eff.","Defensive Eff."))
 title("Violin Plots of Standardized Offensive and Defensive Efficiency")
 ```
+
 We can observe that both data sets are centered at zero and distributed fairly evenly.
 
 Lastly, we observe BARTHAG:
@@ -222,6 +229,7 @@ Lastly, we observe BARTHAG:
 vioplot(ncaa_tab$BARTHAG, names=c("BARTHAG"))
 title("Violin Plot of Prob. of Beating Avg. Division I Team (BARTHAG)")
 ```
+
 As we might guess, since this is a collection of the best ranked teams, they data is clustered above .8, meaning
 that most teams in the tournament have a very good chance of defeating an average DI team.
 
@@ -230,7 +238,8 @@ To work with this stat better, let's look at the standardized version:
 vioplot(ncaa_tab$std_barthag, names=c("BARTHAG"))
 title("Violin Plot of Standardized BARTHAG")
 ```
-The data is now centered nearer to zero, however, the negative skew prevents even distribution.
+
+The data is now centered nearer to zero, however, the negative skew still prevents even distribution.
 
 ### 2.2 Bivariate analysis
 
@@ -273,3 +282,68 @@ ncaa_tab %>%
 
 ### 2.3 Multivariate analysis
 
+For this, we will observe how seeding affects the relationships between other attributes and postseason 
+performance.
+
+Note that the general trend observed in the bivariate analysis above showed that a lower seed corresponded with 
+a better performance in the tournament on average.
+
+Below, we see that teams with high win-loss rate which have better postseason records are generally overlap with 
+the teams have a low seed and vice versa.
+```{r winrat and post w seed}
+ncaa_tab %>%
+  ggplot(aes(x=std_winrat,y=pstsn_rank, color=SEED)) +
+  geom_point() + 
+  geom_smooth(method=lm)
+```
+
+The same convergent trend can be seen here:
+```{r barthag and post w seed}
+ncaa_tab %>%
+  ggplot(aes(x=std_barthag,y=pstsn_rank, color=SEED)) +
+  geom_point() + 
+  geom_smooth(method=lm)
+```
+
+We see that a better chance of beating an avg. Div I team corresponds with better postseason performance, and 
+the improved performance corresponds with the teams with lower seeds.
+
+Below we again observe the same pattern regarding offensive efficiency:
+```{r off and post w seed}
+ncaa_tab %>%
+  ggplot(aes(x=std_adjoe,y=pstsn_rank, color=SEED)) +
+  geom_point() + 
+  geom_smooth(method=lm)
+```
+
+And again with defensive efficiency:
+```{r def and post w seed}
+ncaa_tab %>%
+  ggplot(aes(x=std_adjde,y=pstsn_rank, color=SEED)) +
+  geom_point() + 
+  geom_smooth(method=lm)
+```
+
+Based on the bivariate and multivariate analyses, it's clear that there is correlation between each attribute and 
+postseason performance. However, it's not clear whether these attributes independently influence postseason 
+performance or whether some cause others leading all of them to show correlation. Based on these findings, our
+model will take all attributes (seed, win ratio, offensive efficiency, defensive efficiency and BARTHAG) into 
+account
+
+## 3. Model Building
+
+Because we are trying to predict the tournament round a team will reach (0-7, 0 being a pre-tourney elimination
+and 7 being a championship), we cannot use linear regression, since our goal is predicting a categorical 
+attribute. Thus, the two models we will explore will be decision trees and random forests.
+
+### 3.1 Decision Tree
+
+```{r decn tree}
+
+```
+
+### 3.2 Random Forest
+
+## 4. Model Evaluation
+
+## 5. Conclusions
