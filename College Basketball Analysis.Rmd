@@ -7,12 +7,23 @@ knit: (function(input_file, encoding) {
  output_file=file.path(dirname(input_file), out_dir, 'index.html'))})
 output: html_document
 ---
+
 ## 1. Introduction
 
-This notebook will cover the process of EDA and modeling of NCAA March Madness tournament data with the goal of
-developing a model that will be able to accurately predict a team's postseason performance given their season record
-and tournament seed. This document will go over a couple different ways to build the model and contrast their 
-efficacy.
+Every spring, (those occurring during pandemics excepted), millions of Americans draw up brackets and bet on
+the success and failure of 64 college basketball teams in a postseason finale known as March Madness. No one 
+has ever submitted a perfect bracket, and the odds of it happening are 2.4 trillion to one according to a 
+<a href="https://math.duke.edu/news/duke-math-professor-says-odds-perfect-bracket-are-one-24-trillion">Duke math
+professor</a>.
+
+Sure, it's highly unlikely even the best mathematical model will allow a person to flawless predict the outcome
+of the entire tournament. But what if we could build a model that would improve predictions enough to win
+a pool of brackets - the type so many people compete in every March.
+
+This notebook will atttempt to do just that, first covering the process of tidying data found online, then doing
+Exploratory Data Analysis, then finally, creating a model to predict teams' NCAA March Madness performance given 
+their season record and tournament seed. We'll go over a couple different ways to build the model and compare 
+their efficacy.
 
 The steps are as follows:
 
@@ -28,12 +39,22 @@ The steps are as follows:
     + Bivariate analysis
     + Multivariate analysis
 3. Model Building
+    + Decision Tree
     + Random Forest
-    + Linear Regression
 4. Model Evaluation
+    + Decision Tree Eval
+    + Random Forest Eval
 5. Conclusions
 
 ### 1.1 Setting up necessary libraries
+
+Here, we include some helpful R libraries designed to make data science and data representation easy.
+The comments beside each library gives a basic description of what each is for. For more info on R libraries and 
+packages, click <a href=https://support.rstudio.com/hc/en-us/articles/201057987-Quick-list-of-useful-R-packages>
+here</a>. However, before using them on your own machine, remember that you need to install the package. You can 
+do this in RStudio by navigating to the lower right hand panel and clicking 'Packages,' or by using the command,
+install.packages("package name") in the console.
+
 ```{r setup, include=FALSE}
 library(tidyverse) # data manipulation
 library(stringr) # string manipulation + data cleaning
@@ -46,57 +67,75 @@ library(vioplot) # violin plots
 ```
 
 ### 1.2 Reading in data and evaluating its organization
-This code below loads the untouched dataframe then creates a new dataframe used to clean up the data. For the 
-most part, the data is already tidy, with a team's performance in one season being an entity. Here, we add a column
-which we will fill out later assigning an integer value to a team's postseason performance ("pstsn_rank"). We also
-add an attribute called win_ratio, which computes the wins to games played ratio.
+
+Now that we are ready to work, we want to access our data and evaluate its organization. We use the read_csv 
+function to read the data which we've downloaded via csv file, when the glimpse function to get a quick look
+at how the data is organized.
 ```{r initialize dataframe}
-bball_tab <- read_csv("~/CMSC320-Final-Project/cbb.csv", col_types = cols())
-glimpse(bball_tab)
+bball_tab <- read_csv("~/CMSC320-Final-Project/cbb.csv", col_types = cols()) # read in data
+glimpse(bball_tab) # observe entity and attribute types
 ```
-We see that there are 1757 entities with 24 attributes each. 21 of these attributes are doubles while the remaining
-three are characters. The 'POSTSEASON' attribute is of special interest to us, since this is the aspect we are 
-aiming to predict.
+We want to see whether the data is tidy. This means that each row contains 1 entity and each column represents
+1 attribute. Basically, an entity is a real life 'object' while an attribute describes such an object.
+In our case, an entity is a college basketball team in a single season. Our attributes include the team's name, 
+conference, and stats describing their performance. For more information on the distinction between entities and
+attributes, <a href=https://binaryterms.com/difference-between-entity-and-attribute-in-database.html>here is a 
+useful site</a>. We see with the glimpse command that our data is already tidy. We also see that there are 1757 
+entities with 24 attributes each. 21 of these attributes are doubles while the remaining three are characters. 
+The 'POSTSEASON' attribute is of special interest to us, since this is the aspect we are aiming to predict.
 
 ### 1.3 Investigate attributes
-* TEAM - team/school name
-* CONF - conference id
-* G - games played
-* W - wins
-* ADJOE - points scored per 100 possessions
-* ADJDE - points allowed per 100 possessions
-* BARTHAG - probability of beating avg. DIV I team
-* EFG_O - field goal pctg
-* EFG_D - defensive field goal pctg
-* TOR - turnover rate
-* TORD - steal rate
-* ORB - offensive rebound pctg
-* DRB - defensive rebound pctg
-* FTR - free throw pctg
-* FTRD - defensive free throw pctg
-* 2P0 - 2 point shooting pctg
-* 2PD - defensive 2 point shooting pctg
-* 3P0 - 3 point shooting pctg
-* 3PD - defensive 3 point shooting pctg
-* ADJ_T - possessions per 40 minutes
-* WAB - wins above necessary amount to qualify for postseason
-* POSTSEASON - round of the postseason the team made it to
-* SEED - tournament seed
-* YEAR - season of play/tournament
+
+Now that we know a bit more about the data's organization, we want to make sure we understand the data's 
+attributes and what they each mean. A full description can be found on <a 
+href=https://www.kaggle.com/andrewsundberg/college-basketball-dataset>kaggle</a>, where we downloaded
+our data set, but below is a summarization. I've also included a classification for each attribute. Some 
+common attribute types include text, continuous and discrete numeric, and unordered/ordered categorical. Click
+<a href=https://www.geeksforgeeks.org/understanding-data-attribute-types-qualitative-and-quantitative/>here</a> 
+for a detailed description of types of attributes and their differences.
+
+* TEAM - team/school name (text-nominal)
+* CONF - conference id (text-nominal)
+* G - games played (discrete numeric)
+* W - wins (discrete numeric)
+* ADJOE - points scored per 100 possessions (continuous numeric)
+* ADJDE - points allowed per 100 possessions (continuous numeric)
+* BARTHAG - probability of beating avg. DIV I team (continuous numeric)
+* EFG_O - field goal pctg (continuous numeric)
+* EFG_D - defensive field goal pctg (continuous numeric)
+* TOR - turnover rate (continuous numeric)
+* TORD - steal rate (continuous numeric)
+* ORB - offensive rebound pctg (continuous numeric)
+* DRB - defensive rebound pctg (continuous numeric)
+* FTR - free throw pctg (continuous numeric)
+* FTRD - defensive free throw pctg (continuous numeric)
+* 2P0 - 2 point shooting pctg (continuous numeric)
+* 2PD - defensive 2 point shooting pctg (continuous numeric)
+* 3P0 - 3 point shooting pctg (continuous numeric)
+* 3PD - defensive 3 point shooting pctg (continuous numeric)
+* ADJ_T - possessions per 40 minutes (continuous numeric)
+* WAB - wins above necessary amount to qualify for postseason (discrete numeric)
+* POSTSEASON - round of the postseason the team made it to (ordered categorical)
+* SEED - tournament seed (discrete numeric)
+* YEAR - season of play/tournament (discrete numeric)
 
 ### 1.4 Add attributes
-Here, we disregard any teams who did not make it into the NCAA tournament (their postseason attribute is listed as 
-NA), and we add columns for a new, discrete numerical postseason attribute as well as a attribute for entity number
-one for win-loss ratio
+
+In order to work with our data, we need to adjust some of the given attributes and tweak some of the data. 
+Remember, our goal is to predict postseason performance. Hypothetically, before a tournament we will already
+know we don't have to worry about teams that did not make the cut, so we will disregard those teams and eliminate
+them from our data set (their postseason attribute is listed as NA). We also want to change our postseason 
+attribute from categorical unordered (represented by a text string) to a numerical attribute, so it is easier to 
+graph. Finally, we want to replace Wins and Games with a better metric with which we can compare teams, so we add
+win-loss ratio. 
 ```{r clean data}
 clean_bball <- bball_tab %>% 
-  filter(!is.na(`POSTSEASON`)) %>%
-  mutate(pstsn_rank=0) %>%
-  mutate(entityid=row_number()) %>%
-  mutate(win_ratio=W/(G-W))
+  filter(!is.na(`POSTSEASON`)) %>% # filter out teams that did not make the postseason
+  mutate(pstsn_rank=0) %>% # create a new numerical attribute to represent postseason performance
+  mutate(win_ratio=W/(G-W)) # add a win-loss ratio as an attribute
 ```
 
-This section takes the text attribute, POSTSEASON, of the original table and assigns a corresponding number to each
+Next, we take the text attribute, POSTSEASON, of the original table and assign a corresponding number to each
 entity. The champion is assigned 7, the second place team 6, teams who made it to the semi finals 5, and so on.
 ```{r clean_data}
 for (i in 1:340) {
@@ -122,16 +161,26 @@ for (i in 1:340) {
 ```
 
 ### 1.5 Remove unnecessary attributes
+
 We remove all attributes that do not impact our analysis, including team, conference, and year.
 For simplicity's sake, we also remove attributes that intuitively are less important to the outcome of the 
 tournament: EFG_O, EFG_D, TOR, TORD, ORB, DRB, FTR, FTRD, 2P0, 2PD, 3P0, 3PD, ADJ_T, and WAB.
 It also includes games, wins, and postseason since we have effectively replaced these attributes.
 ```{r remove}
-ncaa_tab <- clean_bball[,c(26,27,25,23,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,24)]
+ncaa_tab <- clean_bball[,c(26,25,23,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20,21,22,24)]
 ncaa_tab <- subset(ncaa_tab, select = -c(TEAM,CONF,G,W,POSTSEASON,YEAR,EFG_O, EFG_D, TOR, TORD, ORB, DRB, FTR, FTRD, ADJ_T, WAB))
 ```
 
 ### 1.6 Standardize continuous data
+
+When graphing and looking for relationships in a set data, it is advantageous for it to be distributed normally.
+Oftentimes, the best way to ensure data is easy to graph is by centering (setting the mean to 0) and scaling 
+(setting standard devation to 1) the data. This way, it becomes fairly evenly distributed, and it also shows 
+trends more clearly than when an outlier may have skewed the data range. Below, we scale and center all the 
+continuous numeric attributes in our set. Click <a 
+href=https://www.youtube.com/watch?time_continue=958&v=Vv69uhUiGU4&feature=emb_logo>this link</a> for a video 
+explaining the merits of this process (it's a bit long, though).
+
 ```{r standardize cont. data}
 ncaa_tab<-ncaa_tab %>%
   mutate(std_winrat=(win_ratio-mean(win_ratio))/(sd(win_ratio))) %>%
@@ -141,8 +190,14 @@ ncaa_tab<-ncaa_tab %>%
 ```
 
 ### 1.7 Partition the data
-We partition the data into a training set and validation set. The training set will take a random sampling of 75%
-of the data while the validation set will take the remaining 25% of the data.
+
+Later on, we'll build a model. This will entail feeding the model data so that it can 'learn' how different 
+attributes affect a team's postseason outcome. However, we can't put all of our data in the training set, or we
+won't be able to effectively test how accurate our model is. To this end, we split our data up into two sets:
+a training set and validation set. The training set will take a random sampling of 75% of the data while the 
+validation set will take the remaining 25% of the data. This is a <a
+href=https://machinelearningmastery.com/difference-test-validation-datasets/>common concept</a> in machine
+learning
 
 ```{r partition}
 # set seed to make partition reproducible
@@ -161,10 +216,11 @@ We now have one training data set with 255 entities and another testing set with
 
 ## 2. Exploratory Data Analysis
 
-For our EDA, we'll use the entire data set to get the best representation of the data.
+For our EDA, we'll use the entire data set to get the best representation of the data. Our goal is to see 
+general trends in the data and observe relationships between attributes.
 
 ### 2.1 Univariate analysis
-First, we look at the univariate distributions.
+First, we look at the univariate distributions. This means observing 
 
 Below looks at the univariate distribution of tournament placement:
 ```{r univar1}
@@ -344,6 +400,14 @@ attribute. Thus, the two models we will explore will be decision trees and rando
 
 ### 3.2 Random Forest
 
+```{r rand forest}
+
+```
+
 ## 4. Model Evaluation
+
+### 4.1 Decision Tree Model Evaluation
+
+### 4.2 Random Forest Evaluation
 
 ## 5. Conclusions
