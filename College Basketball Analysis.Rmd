@@ -54,6 +54,7 @@ install.packages("package name") in the console.
 
 ```{r setup, include=FALSE}
 library(tidyverse) # data manipulation
+library(broom) # working with tidy data
 library(stringr) # string manipulation + data cleaning
 library(ggplot2) # data vizualization
 library(dplyr) # data manipulation
@@ -204,20 +205,6 @@ a training set and validation set. The training set will take a random sampling 
 validation set will take the remaining 25% of the data. This is a <a
 href=https://machinelearningmastery.com/difference-test-validation-datasets/>common concept</a> in machine
 learning
-
-```{r partition}
-# set seed to make partition reproducible
-set.seed(1234)
-
-# set sample size
-smp_size <- floor(0.75 * nrow(ncaa_tab)) # obtain a number that is three quarters of the size of the data set
-
-train_ind <- sample(seq_len(nrow(ncaa_tab)), size = smp_size) # create a vector specifying which rows will belong
-# to the training set
-
-train <- ncaa_tab[train_ind, ] # add specified entities to the training set
-test <- ncaa_tab[-train_ind, ] # add all other entities to the validation set
-```
 
 We now have one training data set with 255 entities and another testing set with 85. On to the next phase!
 
@@ -437,18 +424,20 @@ performance or whether some cause others leading all of them to show correlation
 model will take all attributes (seed, win ratio, offensive efficiency, defensive efficiency and BARTHAG) into 
 account
 
-## 3. Model Building
+## 3. Model Building & Evaluation
 
 Because we are trying to predict the tournament round a team will reach (0-7, 0 being a pre-tourney elimination
 and 7 being a championship), we cannot use linear regression, since our goal is predicting a categorical 
-attribute. Thus, the two models we will explore will be decision trees and random forests.
+attribute. Thus, the two models we will explore will be a decision trees and a random forest.
 
-## 4. Model Evaluation
+From now on, we'll use our standardized data, so we drop our unstandardized data:
 ```{r}
 ncaa_tab <- subset(ncaa_tab, select = -c(ADJOE,ADJDE,BARTHAG,win_ratio))
 ```
 
 ```{r}
+set.seed(1234) # set seed to make partition reproducible
+
 fold_indices <- cvFolds(n=nrow(ncaa_tab), K=10)
 
 error_rates_bytwo <- sapply(1:10, function(fold_index) {
@@ -477,11 +466,9 @@ error_rates_bytwo <- as.data.frame(t(error_rates_bytwo))
 error_rates_two <- error_rates_bytwo %>%
   mutate(fold=1:n()) %>%
   gather(method,error,-fold)
-```
 
-```{r}
 error_rates_one <- error_rates_two[21:40,]
-error_rates_two <- error_rates_two[1:20,]
+error_rates_twoo <- error_rates_two[1:20,]
 ```
 
 ```{r}
@@ -491,13 +478,19 @@ error_rates_one %>%
 ```
 
 ```{r}
-error_rates_two %>%
+error_rates_twoo %>%
   head(20) %>%
   knitr::kable("html")
 ```
 
-### 4.1 Decision Tree Model Evaluation
+```{r dotplot}
+dotplot(error~method, data=error_rates_two, ylab="Mean Prediction Error")
+```
 
-### 4.2 Random Forest Evaluation
+```{r rates}
+lm(error~method, data=error_rates_two) %>% 
+  tidy() %>%
+  knitr::kable()
+```
+## 4. Conclusions
 
-## 5. Conclusions
